@@ -1,48 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 
-const Timer = ({ isActive }) => {
-  const [time, setTime] = useState(0);
+const Timer = memo(({ isActive, initialTime = 0, onTimeUpdate, className = '' }) => {
+  const [time, setTime] = useState(initialTime);
+
+  useEffect(() => {
+    setTime(initialTime);
+  }, [initialTime]);
 
   useEffect(() => {
     let interval = null;
     
     if (isActive) {
       interval = setInterval(() => {
-        setTime(time => time + 1);
+        setTime(prevTime => {
+          const newTime = prevTime + 1;
+          onTimeUpdate?.(newTime);
+          return newTime;
+        });
       }, 1000);
     }
     
     return () => clearInterval(interval);
-  }, [isActive]);
+  }, [isActive, onTimeUpdate]);
 
-  const minutes = Math.floor(time / 60);
-  const seconds = time % 60;
-  const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const savedTime = params.get('time');
-    if (savedTime) {
-      setTime(parseInt(savedTime, 10));
-    }
+  const formatTime = useCallback((timeInSeconds) => {
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = timeInSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }, []);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (time > 0) {
-      params.set('time', time.toString());
-    } else {
-      params.delete('time');
-    }
-    params.set('timerRunning', isActive.toString());
-    window.history.replaceState(null, '', `?${params.toString()}`);
-  }, [time, isActive]);
-
   return (
-    <div className={`text-2xl font-mono transition-colors ${isActive ? 'text-[#3baed9]' : 'text-gray-400'}`}>
-      {formattedTime}
+    <div className={`text-2xl font-mono transition-colors duration-200 ${
+      isActive ? 'text-[#3baed9]' : 'text-gray-400'
+    } ${className}`}>
+      {formatTime(time)}
     </div>
   );
-};
+});
+
+Timer.displayName = 'Timer';
 
 export default Timer;
