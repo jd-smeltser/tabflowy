@@ -1,30 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New task</title>
-    <link rel="stylesheet" href="https://unpkg.com/reset-css/reset.css">
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <div class="controls">
-        <button id="newTaskButton" onclick="createNewTask()" title="Add new task">
-            <span class="visually-hidden">Add new task</span>
-            +
-        </button>
-        <button id="timerButton" onclick="toggleTimer()" title="Start timer">
-            <span class="visually-hidden">Start timer</span>
-        </button>
-        <input type="text" id="title" placeholder="New task" onkeydown="handleEnter(event)" oninput="updateTitle()">
-    </div>
-    <textarea id="content" placeholder="Task description"></textarea>
-    <p id="timer">0:00</p>
-    <table class="instructions">
-        <tr><td>Press "<kbd>Ctrl / Cmd</kbd> + <kbd>Enter</kbd>"</td><td>to start / stop</td></tr>
-        <tr><td>Press "<kbd>Ctrl</kbd> + <kbd>N</kbd>"</td><td>to create a new task</td></tr>
-    </table>
-
-    <script src="scripts.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☑️</text></svg>" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tabflowy</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
