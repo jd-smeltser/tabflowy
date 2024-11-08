@@ -1,12 +1,11 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
-import Outliner from './components/Outliner';
-import './scripts.js';  // Import original scripts
+import App from './App';
 
 const root = createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <Outliner />
+    <App />
   </React.StrictMode>
 );
