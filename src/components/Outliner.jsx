@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
 
 const OutlinerItem = ({ 
   item, 
@@ -6,7 +6,10 @@ const OutlinerItem = ({
   onDelete, 
   path = [], 
   onIndent, 
-  onOutdent
+  onOutdent,
+  inputRef,
+  onFocusPrevious,
+  onFocusNext,
 }) => {
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
@@ -18,7 +21,7 @@ const OutlinerItem = ({
         const newItems = [...items];
         newItems.splice(index + 1, 0, newItem);
         return newItems;
-      });
+      }, index + 1);
     } else if (e.key === 'Tab') {
       e.preventDefault();
       if (e.shiftKey) {
@@ -26,9 +29,26 @@ const OutlinerItem = ({
       } else {
         onIndent(path);
       }
+      // Keep focus on the current input after indenting/outdenting
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 0);
     } else if (e.key === 'Backspace' && !item.content) {
       e.preventDefault();
-      onDelete(path);
+      const newPath = [...path];
+      const index = newPath.pop();
+      if (index > 0) {
+        onDelete(path);
+        onFocusPrevious(path);
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      onFocusPrevious(path);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      onFocusNext(path);
     }
   };
 
@@ -48,12 +68,12 @@ const OutlinerItem = ({
     <div className="flex items-start" style={{ marginLeft: indent * 20 + 'px' }}>
       <span className="text-gray-500 mt-1.5 mr-2">*</span>
       <input
+        ref={inputRef}
         type="text"
         value={item.content}
         onChange={handleContentChange}
         onKeyDown={handleKeyDown}
         className="flex-1 bg-transparent border-none outline-none text-white font-mono"
-        placeholder="New item..."
         style={{
           fontSize: '16px',
           lineHeight: '2',
@@ -65,8 +85,65 @@ const OutlinerItem = ({
   );
 };
 
-const Outliner = () => {
+const Outliner = forwardRef((props, ref) => {
   const [items, setItems] = useState([{ content: '', children: [] }]);
+  const itemRefs = useRef({});
+  const flatItemPaths = useRef([]);
+
+  // Helper function to flatten the item structure into paths
+  const flattenPaths = (items, parentPath = []) => {
+    const paths = [];
+    items.forEach((item, index) => {
+      const currentPath = [...parentPath, index];
+      paths.push(currentPath);
+      if (item.children && item.children.length > 0) {
+        paths.push(...flattenPaths(item.children, [...parentPath, 'children', index]));
+      }
+    });
+    return paths;
+  };
+
+  // Update flat paths whenever items change
+  useEffect(() => {
+    flatItemPaths.current = flattenPaths(items);
+  }, [items]);
+
+  const getItemRefKey = (path) => path.join('-');
+
+  useImperativeHandle(ref, () => ({
+    focusFirstItem: () => {
+      const firstItemRef = itemRefs.current['0'];
+      if (firstItemRef) {
+        firstItemRef.focus();
+      }
+    }
+  }));
+
+  const focusPrevious = (currentPath) => {
+    const currentIndex = flatItemPaths.current.findIndex(
+      path => path.join('-') === currentPath.join('-')
+    );
+    if (currentIndex > 0) {
+      const previousPath = flatItemPaths.current[currentIndex - 1];
+      const previousRef = itemRefs.current[getItemRefKey(previousPath)];
+      if (previousRef) {
+        previousRef.focus();
+      }
+    }
+  };
+
+  const focusNext = (currentPath) => {
+    const currentIndex = flatItemPaths.current.findIndex(
+      path => path.join('-') === currentPath.join('-')
+    );
+    if (currentIndex < flatItemPaths.current.length - 1) {
+      const nextPath = flatItemPaths.current[currentIndex + 1];
+      const nextRef = itemRefs.current[getItemRefKey(nextPath)];
+      if (nextRef) {
+        nextRef.focus();
+      }
+    }
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -89,7 +166,7 @@ const Outliner = () => {
     }
   }, [items]);
 
-  const updateItem = (path, updater) => {
+  const updateItem = (path, updater, focusIndex = null) => {
     setItems(prevItems => {
       const newItems = [...prevItems];
       let current = newItems;
@@ -100,6 +177,16 @@ const Outliner = () => {
       }
       
       const result = updater(current);
+      
+      if (focusIndex !== null) {
+        setTimeout(() => {
+          const newItemRef = itemRefs.current[focusIndex];
+          if (newItemRef) {
+            newItemRef.focus();
+          }
+        }, 0);
+      }
+      
       if (path.length === 0) {
         return result;
       }
@@ -163,6 +250,13 @@ const Outliner = () => {
           path={[...parentPath, index]}
           onIndent={indentItem}
           onOutdent={outdentItem}
+          inputRef={el => {
+            if (el) {
+              itemRefs.current[getItemRefKey([...parentPath, index])] = el;
+            }
+          }}
+          onFocusPrevious={focusPrevious}
+          onFocusNext={focusNext}
         />
         {item.children && renderItems(item.children, [...parentPath, 'children', index])}
       </React.Fragment>
@@ -174,6 +268,8 @@ const Outliner = () => {
       {renderItems(items)}
     </div>
   );
-};
+});
+
+Outliner.displayName = 'Outliner';
 
 export default Outliner;

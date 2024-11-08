@@ -3,9 +3,6 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 import App from './App';
 
+// Remove strict mode to prevent double rendering of timer
 const root = createRoot(document.getElementById('root'));
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+root.render(<App />);

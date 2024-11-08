@@ -5,7 +5,14 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        'timer-yellow': '#e6c07b',
+      },
+      fontFamily: {
+        mono: ['Menlo', 'Monaco', 'Courier New', 'monospace'],
+      },
+    },
   },
   plugins: [],
 }
