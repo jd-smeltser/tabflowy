@@ -2,6 +2,14 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Outliner from './components/Outliner';
 import Timer from './components/Timer';
 
+/**
+ * @typedef {Object} URLState
+ * @property {string} title - Task title
+ * @property {boolean} timerRunning - Timer active state
+ * @property {number} time - Current time in seconds
+ * @property {Array<{content: string, level: number}>} content - Outliner content
+ */
+
 const App = () => {
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [title, setTitle] = useState('');
@@ -9,44 +17,60 @@ const App = () => {
   const titleInputRef = useRef(null);
   const outlinerRef = useRef(null);
 
-  // Load initial state from URL
+  // Load initial state from URL with error handling
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const urlTitle = params.get('title');
-    const urlTimerRunning = params.get('timerRunning') === 'true';
-    const urlTime = parseInt(params.get('time'), 10);
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlTitle = params.get('title');
+      const urlTimerRunning = params.get('timerRunning') === 'true';
+      const urlTime = parseInt(params.get('time'), 10);
 
-    if (urlTitle) {
-      setTitle(urlTitle);
-    } else {
+      if (urlTitle) {
+        setTitle(urlTitle);
+      } else {
+        titleInputRef.current?.focus();
+      }
+
+      if (!isNaN(urlTime) && urlTime >= 0) {
+        setTime(urlTime);
+      }
+
+      setIsTimerActive(urlTimerRunning);
+    } catch (error) {
+      console.error('Error loading initial state:', error);
+      // Reset to default state on error
+      setTitle('');
+      setTime(0);
+      setIsTimerActive(false);
       titleInputRef.current?.focus();
     }
-
-    if (!isNaN(urlTime)) {
-      setTime(urlTime);
-    }
-
-    setIsTimerActive(urlTimerRunning);
   }, []);
 
-  // URL state management
+  // Enhanced URL state management with validation
   const updateURL = useCallback((params) => {
-    const urlParams = new URLSearchParams(window.location.search);
-    Object.entries(params).forEach(([key, value]) => {
-      if (value || value === 0) {
-        urlParams.set(key, value.toString());
-      } else {
-        urlParams.delete(key);
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      Object.entries(params).forEach(([key, value]) => {
+        if (value || value === 0) {
+          urlParams.set(key, value.toString());
+        } else {
+          urlParams.delete(key);
+        }
+      });
+      const newUrl = `?${urlParams.toString()}`;
+      if (newUrl !== window.location.search) {
+        window.history.replaceState(null, '', newUrl);
       }
-    });
-    window.history.replaceState(null, '', `?${urlParams.toString()}`);
+    } catch (error) {
+      console.error('Error updating URL state:', error);
+    }
   }, []);
 
-  // Title handling
+  // Enhanced title handling with validation
   const handleTitleChange = useCallback((e) => {
-    const newTitle = e.target.value;
+    const newTitle = e.target.value.trim();
     setTitle(newTitle);
-    updateURL({ title: newTitle });
+    updateURL({ title: newTitle || null });
   }, [updateURL]);
 
   const handleTitleKeyDown = useCallback((e) => {
@@ -56,31 +80,38 @@ const App = () => {
     }
   }, []);
 
-  // Timer handling
+  // Enhanced timer handling with validation
   const toggleTimer = useCallback(() => {
-    setIsTimerActive(prev => !prev);
-    updateURL({ timerRunning: !isTimerActive });
-  }, [isTimerActive, updateURL]);
+    setIsTimerActive(prev => {
+      const newState = !prev;
+      updateURL({ timerRunning: newState || null });
+      return newState;
+    });
+  }, [updateURL]);
 
-  // Global keyboard shortcuts
+  // Enhanced keyboard shortcuts with error handling
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Timer toggle
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        toggleTimer();
-      }
-      
-      // New task shortcut
-      if (e.key === 'n' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        window.open(window.location.pathname, '_blank');
-      }
+      try {
+        // Timer toggle
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          toggleTimer();
+        }
+        
+        // New task shortcut
+        if (e.key === 'n' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          window.open(window.location.pathname, '_blank');
+        }
 
-      // Focus title shortcut
-      if (e.key === 't' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        titleInputRef.current?.focus();
+        // Focus title shortcut
+        if (e.key === 't' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          titleInputRef.current?.focus();
+        }
+      } catch (error) {
+        console.error('Error handling keyboard shortcut:', error);
       }
     };
 
@@ -88,11 +119,16 @@ const App = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [toggleTimer]);
 
-  // Update document title
+  // Enhanced document title update with validation
   useEffect(() => {
-    const displayTitle = title || 'Untitled';
-    const timerPrefix = isTimerActive ? '⏱ ' : '';
-    document.title = `${timerPrefix}${displayTitle}`;
+    try {
+      const displayTitle = title || 'Untitled';
+      const timerPrefix = isTimerActive ? '⏱ ' : '';
+      document.title = `${timerPrefix}${displayTitle}`;
+    } catch (error) {
+      console.error('Error updating document title:', error);
+      document.title = 'Tabflowy';
+    }
   }, [title, isTimerActive]);
 
   return (
