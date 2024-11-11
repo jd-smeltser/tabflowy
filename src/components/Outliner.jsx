@@ -76,12 +76,10 @@ const OutlinerItem = ({
         break;
         
       case 'Backspace':
-        if (!item.content) {
+        if (!item.content && index > 0) {
           e.preventDefault();
-          if (index > 0) {
-            onDelete(index);
-            onFocusPrevious(index);
-          }
+          onDelete(index);
+          onFocusPrevious(index - 1, true); // Pass true to move cursor to end
         }
         break;
         
@@ -208,6 +206,22 @@ const Outliner = forwardRef((props, ref) => {
     setItems(prevItems => prevItems.filter((_, i) => i !== index));
   };
 
+  const focusItem = (index, moveCursorToEnd = false) => {
+    // Ensure we're focusing the correct index after deletion
+    const targetIndex = Math.max(0, Math.min(index, itemRefs.current.length - 1));
+    
+    setTimeout(() => {
+      const textarea = itemRefs.current[targetIndex];
+      if (textarea) {
+        textarea.focus();
+        if (moveCursorToEnd) {
+          const length = textarea.value.length;
+          textarea.setSelectionRange(length, length);
+        }
+      }
+    }, 0);
+  };
+
   const indentItem = (index) => {
     if (index === 0) return;
     
@@ -235,18 +249,6 @@ const Outliner = forwardRef((props, ref) => {
       }
       return newItems;
     });
-  };
-
-  const focusItem = (index) => {
-    if (index >= 0 && index < itemRefs.current.length) {
-      const textarea = itemRefs.current[index];
-      if (textarea) {
-        textarea.focus();
-        // Always move cursor to end of line
-        const length = textarea.value.length;
-        textarea.setSelectionRange(length, length);
-      }
-    }
   };
 
   useImperativeHandle(ref, () => ({
