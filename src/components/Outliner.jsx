@@ -72,7 +72,7 @@ const OutlinerItem = ({
         onSplitLine(index + 1, {
           content: afterCursor,
           level: level
-        }, 0); // Pass 0 as the desired cursor position
+        }, 0);
         break;
         
       case 'Backspace':
@@ -87,12 +87,16 @@ const OutlinerItem = ({
         
       case 'ArrowUp':
         e.preventDefault();
-        onFocusPrevious(index);
+        const prevIndex = index - 1;
+        if (prevIndex >= 0) {
+          onFocusPrevious(prevIndex);
+        }
         break;
         
       case 'ArrowDown':
         e.preventDefault();
-        onFocusNext(index);
+        const nextIndex = index + 1;
+        onFocusNext(nextIndex);
         break;
     }
   };
@@ -187,12 +191,10 @@ const Outliner = forwardRef((props, ref) => {
   const splitLine = (index, newItem, cursorPosition = 0) => {
     setItems(prevItems => {
       const newItems = [...prevItems];
-      // Insert the new item at the specified index, pushing existing items down
       newItems.splice(index, 0, newItem);
       return newItems;
     });
 
-    // Focus the new line and set cursor position
     setTimeout(() => {
       const textArea = itemRefs.current[index];
       if (textArea) {
@@ -237,7 +239,13 @@ const Outliner = forwardRef((props, ref) => {
 
   const focusItem = (index) => {
     if (index >= 0 && index < itemRefs.current.length) {
-      itemRefs.current[index]?.focus();
+      const textarea = itemRefs.current[index];
+      if (textarea) {
+        textarea.focus();
+        // Always move cursor to end of line
+        const length = textarea.value.length;
+        textarea.setSelectionRange(length, length);
+      }
     }
   };
 
