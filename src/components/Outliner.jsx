@@ -1,7 +1,9 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
+import { ChevronRight, Asterisk } from 'lucide-react';
 
 const OutlinerItem = ({ 
   item, 
+  items,
   onUpdate, 
   onDelete, 
   index,
@@ -12,6 +14,8 @@ const OutlinerItem = ({
   onFocusPrevious,
   onFocusNext,
   onSplitLine,
+  collapsedNodes,
+  onToggleCollapse,
 }) => {
   const textareaRef = useRef(null);
 
@@ -21,6 +25,14 @@ const OutlinerItem = ({
       inputRef(element);
     }
   };
+
+  // Check if this item has any children
+  const hasChildren = items.some((otherItem, otherIndex) => 
+    otherIndex > index && otherItem.level > item.level
+  );
+
+  // Check if this item is collapsed
+  const isCollapsed = collapsedNodes.includes(index);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -61,14 +73,11 @@ const OutlinerItem = ({
         const cursorPosition = textarea.selectionStart;
         const currentContent = item.content;
         
-        // Split content at cursor position
         const beforeCursor = currentContent.substring(0, cursorPosition);
         const afterCursor = currentContent.substring(cursorPosition);
         
-        // Update current line with content before cursor
         onUpdate(index, { ...item, content: beforeCursor });
         
-        // Insert new line with remaining content and set cursor to start
         onSplitLine(index + 1, {
           content: afterCursor,
           level: level
@@ -79,7 +88,7 @@ const OutlinerItem = ({
         if (!item.content && index > 0) {
           e.preventDefault();
           onDelete(index);
-          onFocusPrevious(index - 1, true); // Pass true to move cursor to end
+          onFocusPrevious(index - 1, true);
         }
         break;
         
@@ -89,7 +98,6 @@ const OutlinerItem = ({
         if (prevIndex >= 0) {
           onFocusPrevious(prevIndex);
         } else {
-          // If we're at index 0 and press up, focus the title
           document.querySelector('input[type="text"]')?.focus();
         }
         break;
@@ -106,14 +114,32 @@ const OutlinerItem = ({
     onUpdate(index, { ...item, content: e.target.value });
   };
 
+  const handleBulletClick = (e) => {
+    e.preventDefault();
+    if (hasChildren) {
+      onToggleCollapse(index);
+    }
+  };
+
   return (
     <div className="flex min-w-0 relative">
       <div 
         className="flex min-w-0 w-full"
         style={{ paddingLeft: level * 20 + 'px' }}
       >
-        <div className="flex-shrink-0 w-6 text-gray-500 select-none">
-          *
+        <div 
+          className="flex-shrink-0 w-6 text-gray-500 select-none cursor-pointer hover:text-gray-400 transition-colors"
+          onClick={handleBulletClick}
+        >
+          {hasChildren ? (
+            isCollapsed ? (
+              <ChevronRight className="w-4 h-4" />
+            ) : (
+              <Asterisk className="w-4 h-4" />
+            )
+          ) : (
+            <Asterisk className="w-4 h-4" />
+          )}
         </div>
         
         <div className="flex-grow min-w-0">
@@ -142,17 +168,29 @@ const OutlinerItem = ({
 
 const Outliner = forwardRef((props, ref) => {
   const [items, setItems] = useState([{ content: '', level: 0 }]);
+  const [collapsedNodes, setCollapsedNodes] = useState([]);
   const itemRefs = useRef([]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const content = params.get('content');
+    const collapsed = params.get('collapsed');
+    
     if (content) {
       try {
         const parsedContent = JSON.parse(content);
         setItems(parsedContent);
       } catch (e) {
         console.error('Failed to parse content from URL');
+      }
+    }
+
+    if (collapsed) {
+      try {
+        const parsedCollapsed = JSON.parse(collapsed);
+        setCollapsedNodes(parsedCollapsed);
+      } catch (e) {
+        console.error('Failed to parse collapsed nodes from URL');
       }
     }
   }, []);
@@ -164,12 +202,41 @@ const Outliner = forwardRef((props, ref) => {
     } else {
       params.set('content', JSON.stringify(items));
     }
+    
+    if (collapsedNodes.length > 0) {
+      params.set('collapsed', JSON.stringify(collapsedNodes));
+    } else {
+      params.delete('collapsed');
+    }
+    
     window.history.replaceState(null, '', `?${params.toString()}`);
-  }, [items]);
+  }, [items, collapsedNodes]);
 
   useEffect(() => {
     itemRefs.current = itemRefs.current.slice(0, items.length);
   }, [items]);
+
+  const toggleCollapse = (index) => {
+    setCollapsedNodes(prev => {
+      if (prev.includes(index)) {
+        return prev.filter(i => i !== index);
+      } else {
+        return [...prev, index];
+      }
+    });
+  };
+
+  const getVisibleItems = () => {
+    return items.filter((item, index) => {
+      // Check if any parent is collapsed
+      for (let i = 0; i < index; i++) {
+        if (collapsedNodes.includes(i) && items[i].level < item.level) {
+          return false;
+        }
+      }
+      return true;
+    });
+  };
 
   const updateItem = (index, newItem) => {
     setItems(prevItems => {
@@ -210,7 +277,6 @@ const Outliner = forwardRef((props, ref) => {
   };
 
   const focusItem = (index, moveCursorToEnd = false) => {
-    // Ensure we're focusing the correct index after deletion
     const targetIndex = Math.max(0, Math.min(index, itemRefs.current.length - 1));
     
     setTimeout(() => {
@@ -262,24 +328,35 @@ const Outliner = forwardRef((props, ref) => {
     }
   }));
 
+  const visibleItems = getVisibleItems();
+
   return (
     <div className="mt-4 max-w-full">
-      {items.map((item, index) => (
-        <OutlinerItem
-          key={index}
-          item={item}
-          index={index}
-          level={item.level}
-          onUpdate={updateItem}
-          onDelete={deleteItem}
-          onIndent={indentItem}
-          onOutdent={outdentItem}
-          onSplitLine={splitLine}
-          inputRef={el => itemRefs.current[index] = el}
-          onFocusPrevious={focusItem}
-          onFocusNext={focusItem}
-        />
-      ))}
+      {visibleItems.map((item, visibleIndex) => {
+        const originalIndex = items.findIndex((originalItem, i) => 
+          originalItem === item
+        );
+        
+        return (
+          <OutlinerItem
+            key={originalIndex}
+            item={item}
+            items={items}
+            index={originalIndex}
+            level={item.level}
+            onUpdate={updateItem}
+            onDelete={deleteItem}
+            onIndent={indentItem}
+            onOutdent={outdentItem}
+            onSplitLine={splitLine}
+            inputRef={el => itemRefs.current[originalIndex] = el}
+            onFocusPrevious={focusItem}
+            onFocusNext={focusItem}
+            collapsedNodes={collapsedNodes}
+            onToggleCollapse={toggleCollapse}
+          />
+        );
+      })}
     </div>
   );
 });
