@@ -302,13 +302,21 @@ const Outliner = forwardRef((props, ref) => {
     
     setItems(prevItems => {
       const newItems = [...prevItems];
-      const prevLevel = newItems[index - 1].level;
-      const newLevel = Math.min(prevLevel + 1, prevLevel + 1);
+      const prevItem = newItems[index - 1];
+      
+      // Calculate the maximum allowable indent level
+      // Can only indent one level deeper than the previous item
+      const maxAllowedLevel = prevItem.level + 1;
+      
+      // Calculate the new level with constraints
+      const currentLevel = newItems[index].level;
+      const newLevel = Math.min(maxAllowedLevel, currentLevel + 1);
       
       newItems[index] = {
         ...newItems[index],
         level: newLevel
       };
+      
       return newItems;
     });
   };
