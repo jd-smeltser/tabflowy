@@ -1,6 +1,8 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
 import { ChevronRight, Asterisk } from 'lucide-react';
 
+const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
 const OutlinerItem = ({ 
   item, 
   items,
@@ -26,13 +28,21 @@ const OutlinerItem = ({
     }
   };
 
-  // Check if this item has any children
-  const hasChildren = items.some((otherItem, otherIndex) => 
-    otherIndex > index && otherItem.level > item.level
-  );
+  // Check if this item has any children (one level deeper)
+  const hasChildren = () => {
+    for (let i = index + 1; i < items.length; i++) {
+      if (items[i].level <= item.level) {
+        break;
+      }
+      if (items[i].level === item.level + 1) {
+        return true;
+      }
+    }
+    return false;
+  };
 
-  // Check if this item is collapsed
-  const isCollapsed = collapsedNodes.includes(index);
+  const isCollapsed = collapsedNodes.includes(item.id);
+  const hasChildItems = hasChildren();
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -79,6 +89,7 @@ const OutlinerItem = ({
         onUpdate(index, { ...item, content: beforeCursor });
         
         onSplitLine(index + 1, {
+          id: generateId(),
           content: afterCursor,
           level: level
         }, 0);
@@ -116,8 +127,8 @@ const OutlinerItem = ({
 
   const handleBulletClick = (e) => {
     e.preventDefault();
-    if (hasChildren) {
-      onToggleCollapse(index);
+    if (hasChildItems) {
+      onToggleCollapse(item.id);
     }
   };
 
@@ -128,10 +139,12 @@ const OutlinerItem = ({
         style={{ paddingLeft: level * 20 + 'px' }}
       >
         <div 
-          className="flex-shrink-0 w-6 text-gray-500 select-none cursor-pointer hover:text-gray-400 transition-colors"
+          className={`flex-shrink-0 w-6 select-none transition-colors ${
+            hasChildItems ? 'cursor-pointer text-gray-500 hover:text-gray-400' : 'text-gray-600'
+          }`}
           onClick={handleBulletClick}
         >
-          {hasChildren ? (
+          {hasChildItems ? (
             isCollapsed ? (
               <ChevronRight className="w-4 h-4" />
             ) : (
@@ -167,7 +180,7 @@ const OutlinerItem = ({
 };
 
 const Outliner = forwardRef((props, ref) => {
-  const [items, setItems] = useState([{ content: '', level: 0 }]);
+  const [items, setItems] = useState([{ id: generateId(), content: '', level: 0 }]);
   const [collapsedNodes, setCollapsedNodes] = useState([]);
   const itemRefs = useRef([]);
 
@@ -179,7 +192,12 @@ const Outliner = forwardRef((props, ref) => {
     if (content) {
       try {
         const parsedContent = JSON.parse(content);
-        setItems(parsedContent);
+        // Ensure all items have IDs
+        const contentWithIds = parsedContent.map(item => ({
+          ...item,
+          id: item.id || generateId()
+        }));
+        setItems(contentWithIds);
       } catch (e) {
         console.error('Failed to parse content from URL');
       }
@@ -216,21 +234,10 @@ const Outliner = forwardRef((props, ref) => {
     itemRefs.current = itemRefs.current.slice(0, items.length);
   }, [items]);
 
-  const toggleCollapse = (index) => {
-    setCollapsedNodes(prev => {
-      if (prev.includes(index)) {
-        return prev.filter(i => i !== index);
-      } else {
-        return [...prev, index];
-      }
-    });
-  };
-
   const getVisibleItems = () => {
     return items.filter((item, index) => {
-      // Check if any parent is collapsed
       for (let i = 0; i < index; i++) {
-        if (collapsedNodes.includes(i) && items[i].level < item.level) {
+        if (collapsedNodes.includes(items[i].id) && items[i].level < item.level) {
           return false;
         }
       }
@@ -242,9 +249,9 @@ const Outliner = forwardRef((props, ref) => {
     setItems(prevItems => {
       const newItems = [...prevItems];
       if (index === prevItems.length) {
-        newItems.push(newItem);
+        newItems.push({ ...newItem, id: newItem.id || generateId() });
       } else {
-        newItems[index] = newItem;
+        newItems[index] = { ...newItem, id: newItem.id || prevItems[index].id };
       }
       return newItems;
     });
@@ -259,7 +266,7 @@ const Outliner = forwardRef((props, ref) => {
   const splitLine = (index, newItem, cursorPosition = 0) => {
     setItems(prevItems => {
       const newItems = [...prevItems];
-      newItems.splice(index, 0, newItem);
+      newItems.splice(index, 0, { ...newItem, id: generateId() });
       return newItems;
     });
 
@@ -274,21 +281,6 @@ const Outliner = forwardRef((props, ref) => {
 
   const deleteItem = (index) => {
     setItems(prevItems => prevItems.filter((_, i) => i !== index));
-  };
-
-  const focusItem = (index, moveCursorToEnd = false) => {
-    const targetIndex = Math.max(0, Math.min(index, itemRefs.current.length - 1));
-    
-    setTimeout(() => {
-      const textarea = itemRefs.current[targetIndex];
-      if (textarea) {
-        textarea.focus();
-        if (moveCursorToEnd) {
-          const length = textarea.value.length;
-          textarea.setSelectionRange(length, length);
-        }
-      }
-    }, 0);
   };
 
   const indentItem = (index) => {
@@ -320,6 +312,31 @@ const Outliner = forwardRef((props, ref) => {
     });
   };
 
+  const focusItem = (index, moveCursorToEnd = false) => {
+    const targetIndex = Math.max(0, Math.min(index, itemRefs.current.length - 1));
+    
+    setTimeout(() => {
+      const textarea = itemRefs.current[targetIndex];
+      if (textarea) {
+        textarea.focus();
+        if (moveCursorToEnd) {
+          const length = textarea.value.length;
+          textarea.setSelectionRange(length, length);
+        }
+      }
+    }, 0);
+  };
+
+  const toggleCollapse = (id) => {
+    setCollapsedNodes(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(nodeId => nodeId !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  };
+
   useImperativeHandle(ref, () => ({
     focusFirstItem: () => {
       if (itemRefs.current[0]) {
@@ -333,13 +350,13 @@ const Outliner = forwardRef((props, ref) => {
   return (
     <div className="mt-4 max-w-full">
       {visibleItems.map((item, visibleIndex) => {
-        const originalIndex = items.findIndex((originalItem, i) => 
+        const originalIndex = items.findIndex((originalItem) => 
           originalItem === item
         );
         
         return (
           <OutlinerItem
-            key={originalIndex}
+            key={item.id}
             item={item}
             items={items}
             index={originalIndex}
