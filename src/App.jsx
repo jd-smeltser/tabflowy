@@ -68,9 +68,9 @@ const App = () => {
 
   // Enhanced title handling with validation
   const handleTitleChange = useCallback((e) => {
-    const newTitle = e.target.value.trim();
+    const newTitle = e.target.value;
     setTitle(newTitle);
-    updateURL({ title: newTitle || null });
+    updateURL({ title: newTitle.trim() || null });
   }, [updateURL]);
 
   const handleTitleKeyDown = useCallback((e) => {
