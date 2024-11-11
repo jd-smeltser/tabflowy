@@ -11,6 +11,7 @@ const OutlinerItem = ({
   inputRef,
   onFocusPrevious,
   onFocusNext,
+  onSplitLine,
 }) => {
   const textareaRef = useRef(null);
 
@@ -54,8 +55,24 @@ const OutlinerItem = ({
     switch (e.key) {
       case 'Enter':
         e.preventDefault();
-        const newIndex = index + 1;
-        onUpdate(newIndex, { content: '', level: level });
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const cursorPosition = textarea.selectionStart;
+        const currentContent = item.content;
+        
+        // Split content at cursor position
+        const beforeCursor = currentContent.substring(0, cursorPosition);
+        const afterCursor = currentContent.substring(cursorPosition);
+        
+        // Update current line with content before cursor
+        onUpdate(index, { ...item, content: beforeCursor });
+        
+        // Insert new line with remaining content and set cursor to start
+        onSplitLine(index + 1, {
+          content: afterCursor,
+          level: level
+        }, 0); // Pass 0 as the desired cursor position
         break;
         
       case 'Backspace':
@@ -85,20 +102,15 @@ const OutlinerItem = ({
   };
 
   return (
-    <div 
-      className="flex min-w-0 relative" 
-    >
-      {/* Container that handles both bullet and content positioning */}
+    <div className="flex min-w-0 relative">
       <div 
         className="flex min-w-0 w-full"
         style={{ paddingLeft: level * 20 + 'px' }}
       >
-        {/* Bullet point that moves with indentation */}
         <div className="flex-shrink-0 w-6 text-gray-500 select-none">
           *
         </div>
         
-        {/* Content area */}
         <div className="flex-grow min-w-0">
           <textarea
             ref={setRefs}
@@ -172,6 +184,24 @@ const Outliner = forwardRef((props, ref) => {
     }
   };
 
+  const splitLine = (index, newItem, cursorPosition = 0) => {
+    setItems(prevItems => {
+      const newItems = [...prevItems];
+      // Insert the new item at the specified index, pushing existing items down
+      newItems.splice(index, 0, newItem);
+      return newItems;
+    });
+
+    // Focus the new line and set cursor position
+    setTimeout(() => {
+      const textArea = itemRefs.current[index];
+      if (textArea) {
+        textArea.focus();
+        textArea.setSelectionRange(cursorPosition, cursorPosition);
+      }
+    }, 0);
+  };
+
   const deleteItem = (index) => {
     setItems(prevItems => prevItems.filter((_, i) => i !== index));
   };
@@ -179,15 +209,10 @@ const Outliner = forwardRef((props, ref) => {
   const indentItem = (index) => {
     if (index === 0) return;
     
-    console.log('Indenting item at index:', index);
-    
     setItems(prevItems => {
       const newItems = [...prevItems];
       const prevLevel = newItems[index - 1].level;
       const newLevel = Math.min(prevLevel + 1, prevLevel + 1);
-      
-      console.log('Previous level:', prevLevel);
-      console.log('New level:', newLevel);
       
       newItems[index] = {
         ...newItems[index],
@@ -198,14 +223,9 @@ const Outliner = forwardRef((props, ref) => {
   };
 
   const outdentItem = (index) => {
-    console.log('Outdenting item at index:', index);
-    
     setItems(prevItems => {
       const newItems = [...prevItems];
       if (newItems[index].level > 0) {
-        console.log('Current level:', newItems[index].level);
-        console.log('New level:', newItems[index].level - 1);
-        
         newItems[index] = {
           ...newItems[index],
           level: newItems[index].level - 1
@@ -241,6 +261,7 @@ const Outliner = forwardRef((props, ref) => {
           onDelete={deleteItem}
           onIndent={indentItem}
           onOutdent={outdentItem}
+          onSplitLine={splitLine}
           inputRef={el => itemRefs.current[index] = el}
           onFocusPrevious={focusItem}
           onFocusNext={focusItem}
