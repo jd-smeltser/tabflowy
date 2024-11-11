@@ -235,14 +235,18 @@ const Outliner = forwardRef((props, ref) => {
   }, [items]);
 
   const getVisibleItems = () => {
-    return items.filter((item, index) => {
-      for (let i = 0; i < index; i++) {
-        if (collapsedNodes.includes(items[i].id) && items[i].level < item.level) {
-          return false;
-        }
+    const visibleItems = [];
+    let prevItem = null;
+
+    for (let item of items) {
+      if (prevItem && collapsedNodes.includes(prevItem.id) && item.level > prevItem.level) {
+        continue;
       }
-      return true;
-    });
+      visibleItems.push(item);
+      prevItem = item;
+    }
+
+    return visibleItems;
   };
 
   const updateItem = (index, newItem) => {
