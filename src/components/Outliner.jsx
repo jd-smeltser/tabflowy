@@ -86,9 +86,19 @@ const OutlinerItem = ({
         const beforeCursor = currentContent.substring(0, cursorPosition);
         const afterCursor = currentContent.substring(cursorPosition);
         
-        onUpdate(index, { ...item, content: beforeCursor });
+        // Find the last child index if the current node is collapsed
+        let splitIndex = index + 1;
+        if (isCollapsed) {
+          for (let i = index + 1; i < items.length; i++) {
+            if (items[i].level <= item.level) {
+              break;
+            }
+            splitIndex = i + 1;
+          }
+        }
         
-        onSplitLine(index + 1, {
+        onUpdate(index, { ...item, content: beforeCursor });
+        onSplitLine(splitIndex, {
           id: generateId(),
           content: afterCursor,
           level: level
