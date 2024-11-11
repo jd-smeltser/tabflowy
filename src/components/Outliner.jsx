@@ -88,6 +88,9 @@ const OutlinerItem = ({
         const prevIndex = index - 1;
         if (prevIndex >= 0) {
           onFocusPrevious(prevIndex);
+        } else {
+          // If we're at index 0 and press up, focus the title
+          document.querySelector('input[type="text"]')?.focus();
         }
         break;
         

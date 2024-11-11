@@ -77,6 +77,9 @@ const App = () => {
     if (e.key === 'Tab' || e.key === 'Enter') {
       e.preventDefault();
       outlinerRef.current?.focusFirstItem();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      outlinerRef.current?.focusFirstItem();
     }
   }, []);
 
