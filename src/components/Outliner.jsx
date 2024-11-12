@@ -136,17 +136,21 @@ const OutlinerItem = ({
   };
 
   return (
-    <div className="outliner-item group relative select-text" style={{ minHeight: '24px' }}>
+    <div className="outliner-item group relative select-text" style={{ minHeight: '32px' }}>
       <div 
         className="flex min-w-0 w-full items-stretch absolute inset-0"
-        style={{ paddingLeft: `${level * 20}px` }}
+        style={{ 
+          paddingLeft: `${level * 24}px`,
+          paddingTop: '4px',
+          paddingBottom: '4px'
+        }}
       >
         <div 
-          className={`flex-shrink-0 w-6 flex items-center justify-center select-none transition-colors ${
+          className={`flex-shrink-0 w-8 flex items-center justify-center select-none transition-colors ${
             hasChildItems ? 'cursor-pointer text-gray-500 hover:text-gray-400' : 'text-gray-600'
           }`}
           onClick={handleBulletClick}
-          style={{ marginTop: '1px' }}
+          style={{ marginTop: '2px' }}
         >
           {hasChildItems ? (
             isCollapsed ? (
@@ -171,11 +175,11 @@ const OutlinerItem = ({
             onFocus={() => setIsEditing(true)}
             onBlur={() => setIsEditing(false)}
             className="w-full bg-transparent border-none outline-none 
-                     text-white font-mono text-base resize-none pt-0.5 px-0 select-text overflow-hidden"
+                     text-white font-mono text-base resize-none pt-0.5 px-2 select-text overflow-hidden"
             spellCheck={false}
             style={{
-              lineHeight: '22px',
-              minHeight: '24px'
+              lineHeight: '24px',
+              minHeight: '28px'
             }}
           />
         </div>
