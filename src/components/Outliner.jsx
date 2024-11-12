@@ -21,6 +21,7 @@ const OutlinerItem = ({
 }) => {
   const textareaRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [selection, setSelection] = useState(null);
 
   const setRefs = (element) => {
     textareaRef.current = element;
@@ -40,6 +41,7 @@ const OutlinerItem = ({
   const isCollapsed = collapsedNodes.includes(item.id);
   const hasChildItems = hasChildren();
 
+  // Maintain textarea height
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -47,7 +49,28 @@ const OutlinerItem = ({
     }
   }, [item.content]);
 
+  // Handle selection changes
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      if (selection.rangeCount === 0) return;
+      
+      const range = selection.getRangeAt(0);
+      if (!textareaRef.current?.contains(range.commonAncestorContainer)) {
+        setSelection(null);
+      }
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, []);
+
   const handleKeyDown = (e) => {
+    // If there's a text selection and it's not a navigation key, clear selection
+    if (window.getSelection().toString() && !['Tab', 'Enter', 'Backspace', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+      setSelection(null);
+    }
+
     if (e.key === 'Tab') {
       e.preventDefault();
       if (e.shiftKey) {
@@ -107,13 +130,30 @@ const OutlinerItem = ({
     }
   };
 
-  const handleDoubleClick = () => {
+  const handleClick = (e) => {
+    // Clear any existing selection
+    const selection = window.getSelection();
+    if (selection.toString()) {
+      selection.removeAllRanges();
+    }
+    
     setIsEditing(true);
-    textareaRef.current?.focus();
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      
+      // Position cursor at click location
+      const rect = textareaRef.current.getBoundingClientRect();
+      const clickOffset = e.clientX - rect.left;
+      const approxChar = Math.round(clickOffset / 8); // Assuming monospace font
+      textareaRef.current.setSelectionRange(approxChar, approxChar);
+    }
   };
 
-  const handleBlur = () => {
-    setIsEditing(false);
+  const handleBlur = (e) => {
+    // Only blur if we're not selecting text
+    if (!window.getSelection().toString()) {
+      setIsEditing(false);
+    }
   };
 
   const handleContentChange = (e) => {
@@ -152,11 +192,11 @@ const OutlinerItem = ({
         
         <div 
           className="flex-grow min-w-0 relative"
-          onDoubleClick={handleDoubleClick}
+          onClick={handleClick}
         >
           {/* Text display layer */}
           <div 
-            className={`py-1 whitespace-pre-wrap font-mono text-base leading-relaxed ${
+            className={`py-1 whitespace-pre-wrap font-mono text-base leading-relaxed select-text ${
               isEditing ? 'invisible' : 'visible'
             }`}
           >
@@ -172,7 +212,7 @@ const OutlinerItem = ({
             onBlur={handleBlur}
             onFocus={() => setIsEditing(true)}
             className={`absolute top-0 left-0 w-full bg-transparent border-none outline-none 
-              text-white font-mono text-base leading-relaxed resize-none py-1 ${
+              text-white font-mono text-base leading-relaxed resize-none py-1 select-text ${
               isEditing ? 'visible' : 'invisible'
             }`}
             spellCheck={false}
