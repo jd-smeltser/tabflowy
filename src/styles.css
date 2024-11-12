@@ -18,6 +18,17 @@ body {
     min-height: 100vh;
 }
 
+/* Selection styling */
+::selection {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+::-moz-selection {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
 /* Input styling */
 input {
     font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
@@ -38,6 +49,15 @@ input:focus {
 /* Timer transition */
 .timer-transition {
     transition: color 0.2s ease-in-out;
+}
+
+/* Text selection controls */
+.select-text {
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    cursor: text;
 }
 
 /* Prevent text selection on static elements */
@@ -70,11 +90,35 @@ input:focus {
 /* Outliner specific styles */
 .outliner-item {
     transition: all 0.2s ease-in-out;
+    position: relative;
 }
 
 .outliner-item:focus-within {
     background-color: rgba(255, 255, 255, 0.05);
     border-radius: 2px;
+}
+
+/* Enhanced textarea handling */
+.outliner-item textarea {
+    background: transparent;
+    resize: none;
+    overflow: hidden;
+}
+
+.outliner-item textarea:focus {
+    outline: none;
+    background-color: transparent;
+}
+
+/* Selection layer styling */
+.outliner-item .selection-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 1;
 }
 
 .outliner-bullet {
@@ -144,4 +188,85 @@ input:focus {
 /* Focus ring removal for mouse users */
 .js-focus-visible :focus:not(.focus-visible) {
     outline: none;
+}
+
+/* Enhanced text editing experience */
+.editing-active {
+    position: relative;
+}
+
+.editing-active textarea {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+}
+
+.editing-active .content-display {
+    visibility: hidden;
+}
+
+/* Hover states for outliner items */
+.outliner-item:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* Ensure proper stacking during selection */
+.outliner-item .content-layer {
+    position: relative;
+    z-index: 1;
+}
+
+/* Update these specific outliner styles */
+.outliner-item {
+    position: relative;
+    transition: all 0.2s ease-in-out;
+}
+
+.outliner-item .whitespace-pre-wrap {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Add these new styles */
+.outliner-item:not(:focus-within) textarea {
+    pointer-events: none;
+}
+
+.outliner-item .content-wrapper {
+    position: relative;
+    min-height: 32px;
+}
+
+/* Update selection styles to ensure they work across items */
+::selection {
+    background: rgba(255, 255, 255, 0.2);
+    color: inherit;
+}
+
+::-moz-selection {
+    background: rgba(255, 255, 255, 0.2);
+    color: inherit;
+}
+
+/* Ensure text selection works properly */
+.select-text {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    cursor: text;
+}
+
+/* Mobile selection improvements */
+@media (max-width: 768px) {
+    ::selection {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    .outliner-item {
+        padding: 2px 0;
+    }
 }

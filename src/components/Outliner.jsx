@@ -20,6 +20,7 @@ const OutlinerItem = ({
   onToggleCollapse,
 }) => {
   const textareaRef = useRef(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   const setRefs = (element) => {
     textareaRef.current = element;
@@ -28,15 +29,10 @@ const OutlinerItem = ({
     }
   };
 
-  // Check if this item has any children (one level deeper)
   const hasChildren = () => {
     for (let i = index + 1; i < items.length; i++) {
-      if (items[i].level <= item.level) {
-        break;
-      }
-      if (items[i].level === item.level + 1) {
-        return true;
-      }
+      if (items[i].level <= item.level) break;
+      if (items[i].level === item.level + 1) return true;
     }
     return false;
   };
@@ -46,53 +42,35 @@ const OutlinerItem = ({
 
   useEffect(() => {
     if (textareaRef.current) {
-      const resizeTextarea = () => {
-        const textarea = textareaRef.current;
-        textarea.style.height = 'auto';
-        textarea.style.height = textarea.scrollHeight + 'px';
-      };
-      resizeTextarea();
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
   }, [item.content]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Tab') {
       e.preventDefault();
-      
       if (e.shiftKey) {
         onOutdent(index);
       } else {
         onIndent(index);
       }
-      
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus();
-        }
-      }, 0);
-      
-      return false;
+      return;
     }
     
     switch (e.key) {
       case 'Enter':
         e.preventDefault();
-        const textarea = textareaRef.current;
-        if (!textarea) return;
+        if (!textareaRef.current) return;
 
-        const cursorPosition = textarea.selectionStart;
-        const currentContent = item.content;
+        const cursorPosition = textareaRef.current.selectionStart;
+        const beforeCursor = item.content.substring(0, cursorPosition);
+        const afterCursor = item.content.substring(cursorPosition);
         
-        const beforeCursor = currentContent.substring(0, cursorPosition);
-        const afterCursor = currentContent.substring(cursorPosition);
-        
-        // Find the last child index if the current node is collapsed
         let splitIndex = index + 1;
         if (isCollapsed) {
           for (let i = index + 1; i < items.length; i++) {
-            if (items[i].level <= item.level) {
-              break;
-            }
+            if (items[i].level <= item.level) break;
             splitIndex = i + 1;
           }
         }
@@ -115,9 +93,8 @@ const OutlinerItem = ({
         
       case 'ArrowUp':
         e.preventDefault();
-        const prevIndex = index - 1;
-        if (prevIndex >= 0) {
-          onFocusPrevious(prevIndex);
+        if (index > 0) {
+          onFocusPrevious(index - 1);
         } else {
           document.querySelector('input[type="text"]')?.focus();
         }
@@ -125,10 +102,18 @@ const OutlinerItem = ({
         
       case 'ArrowDown':
         e.preventDefault();
-        const nextIndex = index + 1;
-        onFocusNext(nextIndex);
+        onFocusNext(index + 1);
         break;
     }
+  };
+
+  const handleDoubleClick = () => {
+    setIsEditing(true);
+    textareaRef.current?.focus();
+  };
+
+  const handleBlur = () => {
+    setIsEditing(false);
   };
 
   const handleContentChange = (e) => {
@@ -143,10 +128,10 @@ const OutlinerItem = ({
   };
 
   return (
-    <div className="flex min-w-0 relative">
+    <div className="outliner-item group relative select-text">
       <div 
-        className="flex min-w-0 w-full"
-        style={{ paddingLeft: level * 20 + 'px' }}
+        className="flex min-w-0 w-full items-center"
+        style={{ paddingLeft: `${level * 20}px` }}
       >
         <div 
           className={`flex-shrink-0 w-6 select-none transition-colors ${
@@ -165,23 +150,35 @@ const OutlinerItem = ({
           )}
         </div>
         
-        <div className="flex-grow min-w-0">
+        <div 
+          className="flex-grow min-w-0 relative"
+          onDoubleClick={handleDoubleClick}
+        >
+          {/* Text display layer */}
+          <div 
+            className={`py-1 whitespace-pre-wrap font-mono text-base leading-relaxed ${
+              isEditing ? 'invisible' : 'visible'
+            }`}
+          >
+            {item.content || ' '}
+          </div>
+          
+          {/* Edit layer */}
           <textarea
             ref={setRefs}
             value={item.content}
             onChange={handleContentChange}
             onKeyDown={handleKeyDown}
-            className="w-full bg-transparent border-none outline-none text-white font-mono resize-none overflow-hidden"
+            onBlur={handleBlur}
+            onFocus={() => setIsEditing(true)}
+            className={`absolute top-0 left-0 w-full bg-transparent border-none outline-none 
+              text-white font-mono text-base leading-relaxed resize-none py-1 ${
+              isEditing ? 'visible' : 'invisible'
+            }`}
+            spellCheck={false}
             style={{
-              fontSize: '16px',
-              lineHeight: '2',
-              padding: '0',
-              margin: '0',
               minHeight: '32px',
             }}
-            rows={1}
-            spellCheck={false}
-            tabIndex={0}
           />
         </div>
       </div>
