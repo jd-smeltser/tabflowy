@@ -65,10 +65,26 @@ const OutlinerItem = ({
     return () => document.removeEventListener('selectionchange', handleSelectionChange);
   }, []);
 
+  // Focus management
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [isEditing]);
+
   const handleKeyDown = (e) => {
-    // If there's a text selection and it's not a navigation key, clear selection
-    if (window.getSelection().toString() && !['Tab', 'Enter', 'Backspace', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-      setSelection(null);
+    const selection = window.getSelection();
+    const hasSelection = selection.toString().length > 0;
+
+    // Handle navigation keys
+    if (['ArrowUp', 'ArrowDown'].includes(e.key) && !hasSelection) {
+      e.preventDefault();
+      if (e.key === 'ArrowUp' && index > 0) {
+        onFocusPrevious(index - 1);
+      } else if (e.key === 'ArrowDown') {
+        onFocusNext(index + 1);
+      }
+      return;
     }
 
     if (e.key === 'Tab') {
@@ -80,7 +96,7 @@ const OutlinerItem = ({
       }
       return;
     }
-    
+
     switch (e.key) {
       case 'Enter':
         e.preventDefault();
@@ -103,7 +119,7 @@ const OutlinerItem = ({
           id: generateId(),
           content: afterCursor,
           level: level
-        }, 0);
+        });
         break;
         
       case 'Backspace':
@@ -113,39 +129,29 @@ const OutlinerItem = ({
           onFocusPrevious(index - 1, true);
         }
         break;
-        
-      case 'ArrowUp':
-        e.preventDefault();
-        if (index > 0) {
-          onFocusPrevious(index - 1);
-        } else {
-          document.querySelector('input[type="text"]')?.focus();
-        }
-        break;
-        
-      case 'ArrowDown':
-        e.preventDefault();
-        onFocusNext(index + 1);
-        break;
     }
   };
 
   const handleClick = (e) => {
-    // Clear any existing selection
-    const selection = window.getSelection();
-    if (selection.toString()) {
-      selection.removeAllRanges();
+    // Don't reset selection if we're extending a multi-select
+    if (e.shiftKey && window.getSelection().toString()) {
+      e.preventDefault();
+      return;
     }
-    
+
     setIsEditing(true);
+    
+    // Position cursor at click location for single clicks
     if (textareaRef.current) {
-      textareaRef.current.focus();
-      
-      // Position cursor at click location
       const rect = textareaRef.current.getBoundingClientRect();
       const clickOffset = e.clientX - rect.left;
       const approxChar = Math.round(clickOffset / 8); // Assuming monospace font
-      textareaRef.current.setSelectionRange(approxChar, approxChar);
+      
+      // Use setTimeout to ensure the focus happens after React's state updates
+      setTimeout(() => {
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(approxChar, approxChar);
+      }, 0);
     }
   };
 
@@ -162,6 +168,7 @@ const OutlinerItem = ({
 
   const handleBulletClick = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     if (hasChildItems) {
       onToggleCollapse(item.id);
     }
