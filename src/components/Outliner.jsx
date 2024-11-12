@@ -136,16 +136,17 @@ const OutlinerItem = ({
   };
 
   return (
-    <div className="outliner-item group relative select-text h-6">
+    <div className="outliner-item group relative select-text" style={{ minHeight: '24px' }}>
       <div 
-        className="flex min-w-0 w-full items-center absolute inset-0"
+        className="flex min-w-0 w-full items-stretch absolute inset-0"
         style={{ paddingLeft: `${level * 20}px` }}
       >
         <div 
-          className={`flex-shrink-0 w-6 h-full flex items-center justify-center select-none transition-colors ${
+          className={`flex-shrink-0 w-6 flex items-center justify-center select-none transition-colors ${
             hasChildItems ? 'cursor-pointer text-gray-500 hover:text-gray-400' : 'text-gray-600'
           }`}
           onClick={handleBulletClick}
+          style={{ marginTop: '1px' }}
         >
           {hasChildItems ? (
             isCollapsed ? (
@@ -159,7 +160,7 @@ const OutlinerItem = ({
         </div>
         
         <div 
-          className="flex-grow min-w-0 relative flex items-center h-full"
+          className="flex-grow min-w-0 relative flex items-start h-full"
           onClick={handleClick}
         >
           <textarea
@@ -170,11 +171,11 @@ const OutlinerItem = ({
             onFocus={() => setIsEditing(true)}
             onBlur={() => setIsEditing(false)}
             className="w-full bg-transparent border-none outline-none 
-                      text-white font-mono text-base resize-none py-0 px-0 select-text overflow-hidden"
+                     text-white font-mono text-base resize-none pt-0.5 px-0 select-text overflow-hidden"
             spellCheck={false}
             style={{
-              lineHeight: '24px',
-              height: '24px'
+              lineHeight: '22px',
+              minHeight: '24px'
             }}
           />
         </div>
