@@ -21,7 +21,6 @@ const OutlinerItem = ({
 }) => {
   const textareaRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [selection, setSelection] = useState(null);
 
   const setRefs = (element) => {
     textareaRef.current = element;
@@ -49,22 +48,6 @@ const OutlinerItem = ({
     }
   }, [item.content]);
 
-  // Handle selection changes
-  useEffect(() => {
-    const handleSelectionChange = () => {
-      const selection = window.getSelection();
-      if (selection.rangeCount === 0) return;
-      
-      const range = selection.getRangeAt(0);
-      if (!textareaRef.current?.contains(range.commonAncestorContainer)) {
-        setSelection(null);
-      }
-    };
-
-    document.addEventListener('selectionchange', handleSelectionChange);
-    return () => document.removeEventListener('selectionchange', handleSelectionChange);
-  }, []);
-
   // Focus management
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -73,20 +56,6 @@ const OutlinerItem = ({
   }, [isEditing]);
 
   const handleKeyDown = (e) => {
-    const selection = window.getSelection();
-    const hasSelection = selection.toString().length > 0;
-
-    // Handle navigation keys
-    if (['ArrowUp', 'ArrowDown'].includes(e.key) && !hasSelection) {
-      e.preventDefault();
-      if (e.key === 'ArrowUp' && index > 0) {
-        onFocusPrevious(index - 1);
-      } else if (e.key === 'ArrowDown') {
-        onFocusNext(index + 1);
-      }
-      return;
-    }
-
     if (e.key === 'Tab') {
       e.preventDefault();
       if (e.shiftKey) {
@@ -97,68 +66,62 @@ const OutlinerItem = ({
       return;
     }
 
-    switch (e.key) {
-      case 'Enter':
-        e.preventDefault();
-        if (!textareaRef.current) return;
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (index > 0) {
+        onFocusPrevious(index - 1);
+      }
+      return;
+    }
 
-        const cursorPosition = textareaRef.current.selectionStart;
-        const beforeCursor = item.content.substring(0, cursorPosition);
-        const afterCursor = item.content.substring(cursorPosition);
-        
-        let splitIndex = index + 1;
-        if (isCollapsed) {
-          for (let i = index + 1; i < items.length; i++) {
-            if (items[i].level <= item.level) break;
-            splitIndex = i + 1;
-          }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      onFocusNext(index + 1);
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (!textareaRef.current) return;
+
+      const cursorPosition = textareaRef.current.selectionStart;
+      const beforeCursor = item.content.substring(0, cursorPosition);
+      const afterCursor = item.content.substring(cursorPosition);
+      
+      let splitIndex = index + 1;
+      if (isCollapsed) {
+        for (let i = index + 1; i < items.length; i++) {
+          if (items[i].level <= item.level) break;
+          splitIndex = i + 1;
         }
-        
-        onUpdate(index, { ...item, content: beforeCursor });
-        onSplitLine(splitIndex, {
-          id: generateId(),
-          content: afterCursor,
-          level: level
-        });
-        break;
-        
-      case 'Backspace':
-        if (!item.content && index > 0) {
-          e.preventDefault();
-          onDelete(index);
-          onFocusPrevious(index - 1, true);
-        }
-        break;
+      }
+      
+      onUpdate(index, { ...item, content: beforeCursor });
+      onSplitLine(splitIndex, {
+        id: generateId(),
+        content: afterCursor,
+        level: level
+      });
+      return;
+    }
+
+    if (e.key === 'Backspace' && !item.content && index > 0) {
+      e.preventDefault();
+      onDelete(index);
+      onFocusPrevious(index - 1, true);
     }
   };
 
   const handleClick = (e) => {
-    // Don't reset selection if we're extending a multi-select
-    if (e.shiftKey && window.getSelection().toString()) {
-      e.preventDefault();
-      return;
-    }
-
     setIsEditing(true);
     
-    // Position cursor at click location for single clicks
     if (textareaRef.current) {
       const rect = textareaRef.current.getBoundingClientRect();
       const clickOffset = e.clientX - rect.left;
-      const approxChar = Math.round(clickOffset / 8); // Assuming monospace font
+      const approxChar = Math.round(clickOffset / 8);
       
-      // Use setTimeout to ensure the focus happens after React's state updates
-      setTimeout(() => {
-        textareaRef.current.focus();
-        textareaRef.current.setSelectionRange(approxChar, approxChar);
-      }, 0);
-    }
-  };
-
-  const handleBlur = (e) => {
-    // Only blur if we're not selecting text
-    if (!window.getSelection().toString()) {
-      setIsEditing(false);
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(approxChar, approxChar);
     }
   };
 
@@ -201,27 +164,15 @@ const OutlinerItem = ({
           className="flex-grow min-w-0 relative"
           onClick={handleClick}
         >
-          {/* Text display layer */}
-          <div 
-            className={`py-1 whitespace-pre-wrap font-mono text-base leading-relaxed select-text ${
-              isEditing ? 'invisible' : 'visible'
-            }`}
-          >
-            {item.content || ' '}
-          </div>
-          
-          {/* Edit layer */}
           <textarea
             ref={setRefs}
             value={item.content}
             onChange={handleContentChange}
             onKeyDown={handleKeyDown}
-            onBlur={handleBlur}
             onFocus={() => setIsEditing(true)}
-            className={`absolute top-0 left-0 w-full bg-transparent border-none outline-none 
-              text-white font-mono text-base leading-relaxed resize-none py-1 select-text ${
-              isEditing ? 'visible' : 'invisible'
-            }`}
+            onBlur={() => setIsEditing(false)}
+            className="w-full bg-transparent border-none outline-none 
+              text-white font-mono text-base leading-relaxed resize-none py-1 select-text"
             spellCheck={false}
             style={{
               minHeight: '32px',
@@ -246,7 +197,6 @@ const Outliner = forwardRef((props, ref) => {
     if (content) {
       try {
         const parsedContent = JSON.parse(content);
-        // Ensure all items have IDs
         const contentWithIds = parsedContent.map(item => ({
           ...item,
           id: item.id || generateId()
@@ -284,10 +234,6 @@ const Outliner = forwardRef((props, ref) => {
     window.history.replaceState(null, '', `?${params.toString()}`);
   }, [items, collapsedNodes]);
 
-  useEffect(() => {
-    itemRefs.current = itemRefs.current.slice(0, items.length);
-  }, [items]);
-
   const getVisibleItems = () => {
     const visibleItems = [];
     let prevItem = null;
@@ -313,28 +259,22 @@ const Outliner = forwardRef((props, ref) => {
       }
       return newItems;
     });
-
-    if (index === items.length) {
-      setTimeout(() => {
-        itemRefs.current[index]?.focus();
-      }, 0);
-    }
   };
 
-  const splitLine = (index, newItem, cursorPosition = 0) => {
+  const splitLine = (index, newItem) => {
     setItems(prevItems => {
       const newItems = [...prevItems];
       newItems.splice(index, 0, { ...newItem, id: generateId() });
       return newItems;
     });
 
-    setTimeout(() => {
-      const textArea = itemRefs.current[index];
-      if (textArea) {
-        textArea.focus();
-        textArea.setSelectionRange(cursorPosition, cursorPosition);
+    // Focus new line after React state update
+    requestAnimationFrame(() => {
+      if (itemRefs.current[index]) {
+        itemRefs.current[index].focus();
+        itemRefs.current[index].setSelectionRange(0, 0);
       }
-    }, 0);
+    });
   };
 
   const deleteItem = (index) => {
@@ -347,12 +287,7 @@ const Outliner = forwardRef((props, ref) => {
     setItems(prevItems => {
       const newItems = [...prevItems];
       const prevItem = newItems[index - 1];
-      
-      // Calculate the maximum allowable indent level
-      // Can only indent one level deeper than the previous item
       const maxAllowedLevel = prevItem.level + 1;
-      
-      // Calculate the new level with constraints
       const currentLevel = newItems[index].level;
       const newLevel = Math.min(maxAllowedLevel, currentLevel + 1);
       
@@ -379,18 +314,17 @@ const Outliner = forwardRef((props, ref) => {
   };
 
   const focusItem = (index, moveCursorToEnd = false) => {
-    const targetIndex = Math.max(0, Math.min(index, itemRefs.current.length - 1));
+    const targetIndex = Math.max(0, Math.min(index, items.length - 1));
     
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       const textarea = itemRefs.current[targetIndex];
       if (textarea) {
         textarea.focus();
         if (moveCursorToEnd) {
-          const length = textarea.value.length;
-          textarea.setSelectionRange(length, length);
+          textarea.setSelectionRange(textarea.value.length, textarea.value.length);
         }
       }
-    }, 0);
+    });
   };
 
   const toggleCollapse = (id) => {
@@ -416,9 +350,7 @@ const Outliner = forwardRef((props, ref) => {
   return (
     <div className="mt-4 max-w-full">
       {visibleItems.map((item, visibleIndex) => {
-        const originalIndex = items.findIndex((originalItem) => 
-          originalItem === item
-        );
+        const originalIndex = items.findIndex(originalItem => originalItem === item);
         
         return (
           <OutlinerItem
