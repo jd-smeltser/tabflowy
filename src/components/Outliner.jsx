@@ -40,7 +40,6 @@ const OutlinerItem = ({
   const isCollapsed = collapsedNodes.includes(item.id);
   const hasChildItems = hasChildren();
 
-  // Maintain textarea height
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -48,7 +47,6 @@ const OutlinerItem = ({
     }
   }, [item.content]);
 
-  // Focus management
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       textareaRef.current.focus();
@@ -138,13 +136,13 @@ const OutlinerItem = ({
   };
 
   return (
-    <div className="outliner-item group relative select-text">
+    <div className="outliner-item group relative select-text h-6">
       <div 
-        className="flex min-w-0 w-full items-center"
+        className="flex min-w-0 w-full items-center absolute inset-0"
         style={{ paddingLeft: `${level * 20}px` }}
       >
         <div 
-          className={`flex-shrink-0 w-6 select-none transition-colors ${
+          className={`flex-shrink-0 w-6 h-full flex items-center justify-center select-none transition-colors ${
             hasChildItems ? 'cursor-pointer text-gray-500 hover:text-gray-400' : 'text-gray-600'
           }`}
           onClick={handleBulletClick}
@@ -161,7 +159,7 @@ const OutlinerItem = ({
         </div>
         
         <div 
-          className="flex-grow min-w-0 relative"
+          className="flex-grow min-w-0 relative flex items-center h-full"
           onClick={handleClick}
         >
           <textarea
@@ -172,10 +170,11 @@ const OutlinerItem = ({
             onFocus={() => setIsEditing(true)}
             onBlur={() => setIsEditing(false)}
             className="w-full bg-transparent border-none outline-none 
-              text-white font-mono text-base leading-relaxed resize-none py-1 select-text"
+                      text-white font-mono text-base resize-none py-0 px-0 select-text overflow-hidden"
             spellCheck={false}
             style={{
-              minHeight: '32px',
+              lineHeight: '24px',
+              height: '24px'
             }}
           />
         </div>
