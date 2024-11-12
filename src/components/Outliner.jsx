@@ -1,5 +1,5 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
-import { ChevronRight, Asterisk } from 'lucide-react';
+import { ChevronRight, Asterisk, ZoomIn, ZoomOut } from 'lucide-react';
 
 const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -18,6 +18,9 @@ const OutlinerItem = ({
   onSplitLine,
   collapsedNodes,
   onToggleCollapse,
+  onZoomIn,
+  isZoomed,
+  showZoomControls = true,
 }) => {
   const textareaRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -54,6 +57,13 @@ const OutlinerItem = ({
   }, [isEditing]);
 
   const handleKeyDown = (e) => {
+    // Handle zoom keyboard shortcuts
+    if (e.key === '.' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      onZoomIn(item.id);
+      return;
+    }
+
     if (e.key === 'Tab') {
       e.preventDefault();
       if (e.shiftKey) {
@@ -135,6 +145,12 @@ const OutlinerItem = ({
     }
   };
 
+  const handleZoomInClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onZoomIn(item.id);
+  };
+
   return (
     <div className="outliner-item group relative select-text" style={{ minHeight: '32px' }}>
       <div 
@@ -182,6 +198,20 @@ const OutlinerItem = ({
               minHeight: '28px'
             }}
           />
+          
+          {showZoomControls && (hasChildItems || isZoomed) && (
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              {hasChildItems && !isZoomed && (
+                <button
+                  onClick={handleZoomInClick}
+                  className="p-1 text-gray-500 hover:text-gray-300 transition-colors"
+                  title="Zoom in (⌘ + .)"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -191,12 +221,14 @@ const OutlinerItem = ({
 const Outliner = forwardRef((props, ref) => {
   const [items, setItems] = useState([{ id: generateId(), content: '', level: 0 }]);
   const [collapsedNodes, setCollapsedNodes] = useState([]);
+  const [zoomPath, setZoomPath] = useState([]); // Add missing state
   const itemRefs = useRef([]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const content = params.get('content');
     const collapsed = params.get('collapsed');
+    const zoom = params.get('zoomPath'); // Add zoom path loading
     
     if (content) {
       try {
@@ -219,6 +251,15 @@ const Outliner = forwardRef((props, ref) => {
         console.error('Failed to parse collapsed nodes from URL');
       }
     }
+
+    if (zoom) {
+      try {
+        const parsedZoom = zoom.split(',');
+        setZoomPath(parsedZoom);
+      } catch (e) {
+        console.error('Failed to parse zoom path from URL');
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -234,23 +275,68 @@ const Outliner = forwardRef((props, ref) => {
     } else {
       params.delete('collapsed');
     }
+
+    if (zoomPath.length > 0) {
+      params.set('zoomPath', zoomPath.join(','));
+    } else {
+      params.delete('zoomPath');
+    }
     
     window.history.replaceState(null, '', `?${params.toString()}`);
-  }, [items, collapsedNodes]);
+  }, [items, collapsedNodes, zoomPath]);
 
   const getVisibleItems = () => {
-    const visibleItems = [];
-    let prevItem = null;
+    if (zoomPath.length === 0) {
+      const visibleItems = [];
+      let prevItem = null;
 
-    for (let item of items) {
-      if (prevItem && collapsedNodes.includes(prevItem.id) && item.level > prevItem.level) {
+      for (let item of items) {
+        if (prevItem && collapsedNodes.includes(prevItem.id) && item.level > prevItem.level) {
+          continue;
+        }
+        visibleItems.push(item);
+        prevItem = item;
+      }
+
+      return visibleItems;
+    }
+
+    // Handle zoomed state
+    const currentZoomId = zoomPath[zoomPath.length - 1];
+    const zoomedItemIndex = items.findIndex(item => item.id === currentZoomId);
+    
+    if (zoomedItemIndex === -1) {
+      setZoomPath([]);
+      return items;
+    }
+
+    const visibleItems = [];
+    const zoomedItem = items[zoomedItemIndex];
+    visibleItems.push(zoomedItem);
+
+    // Add children of zoomed item
+    for (let i = zoomedItemIndex + 1; i < items.length; i++) {
+      const item = items[i];
+      if (item.level <= zoomedItem.level) break;
+      
+      if (visibleItems[visibleItems.length - 1] && 
+          collapsedNodes.includes(visibleItems[visibleItems.length - 1].id) && 
+          item.level > visibleItems[visibleItems.length - 1].level) {
         continue;
       }
+      
       visibleItems.push(item);
-      prevItem = item;
     }
 
     return visibleItems;
+  };
+
+  const handleZoomIn = (itemId) => {
+    setZoomPath(prev => [...prev, itemId]);
+  };
+
+  const handleZoomOut = () => {
+    setZoomPath(prev => prev.slice(0, -1));
   };
 
   const updateItem = (index, newItem) => {
@@ -350,9 +436,38 @@ const Outliner = forwardRef((props, ref) => {
   }));
 
   const visibleItems = getVisibleItems();
+  const currentZoomId = zoomPath[zoomPath.length - 1];
 
   return (
     <div className="mt-4 max-w-full">
+      {zoomPath.length > 0 && (
+        <div className="flex items-center gap-2 mb-4 text-gray-400">
+          <button
+            onClick={handleZoomOut}
+            className="p-1 hover:text-gray-200 transition-colors"
+            title="Zoom out (⌘ + ,)"
+          >
+            <ZoomOut className="w-4 h-4" />
+          </button>
+          <div className="flex items-center gap-1">
+            {zoomPath.map((id, index) => {
+              const item = items.find(i => i.id === id);
+              return (
+                <React.Fragment key={id}>
+                  {index > 0 && <span className="mx-1">›</span>}
+                  <button
+                    onClick={() => setZoomPath(zoomPath.slice(0, index + 1))}
+                    className="hover:text-gray-200 transition-colors"
+                  >
+                    {item?.content || 'Unknown'}
+                  </button>
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {visibleItems.map((item, visibleIndex) => {
         const originalIndex = items.findIndex(originalItem => originalItem === item);
         
@@ -373,6 +488,8 @@ const Outliner = forwardRef((props, ref) => {
             onFocusNext={focusItem}
             collapsedNodes={collapsedNodes}
             onToggleCollapse={toggleCollapse}
+            onZoomIn={handleZoomIn}
+            isZoomed={item.id === currentZoomId}
           />
         );
       })}
