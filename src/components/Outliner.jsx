@@ -440,34 +440,6 @@ const Outliner = forwardRef((props, ref) => {
 
   return (
     <div className="mt-4 max-w-full">
-      {zoomPath.length > 0 && (
-        <div className="flex items-center gap-2 mb-4 text-gray-400">
-          <button
-            onClick={handleZoomOut}
-            className="p-1 hover:text-gray-200 transition-colors"
-            title="Zoom out (⌘ + ,)"
-          >
-            <ZoomOut className="w-4 h-4" />
-          </button>
-          <div className="flex items-center gap-1">
-            {zoomPath.map((id, index) => {
-              const item = items.find(i => i.id === id);
-              return (
-                <React.Fragment key={id}>
-                  {index > 0 && <span className="mx-1">›</span>}
-                  <button
-                    onClick={() => setZoomPath(zoomPath.slice(0, index + 1))}
-                    className="hover:text-gray-200 transition-colors"
-                  >
-                    {item?.content || 'Unknown'}
-                  </button>
-                </React.Fragment>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {visibleItems.map((item, visibleIndex) => {
         const originalIndex = items.findIndex(originalItem => originalItem === item);
         
