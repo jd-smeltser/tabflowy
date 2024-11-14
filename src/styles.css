@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Reset textarea appearance */
+textarea {
+    @apply appearance-none;
+    border: none !important;
+    background: transparent !important;
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace !important;
+}
+
 /* Base styles */
 * {
     box-sizing: border-box;
@@ -31,7 +39,9 @@ body {
 
 /* Input styling */
 input {
-    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace !important;
+    border: none !important;
+    background: transparent !important;
 }
 
 input::placeholder {
@@ -43,48 +53,7 @@ input::placeholder {
 input:focus {
     outline: none;
     background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 2px;
-}
-
-/* Timer transition */
-.timer-transition {
-    transition: color 0.2s ease-in-out;
-}
-
-/* Text selection controls */
-.select-text {
-    user-select: text;
-    -webkit-user-select: text;
-    -moz-user-select: text;
-    -ms-user-select: text;
-    cursor: text;
-}
-
-/* Prevent text selection on static elements */
-.no-select {
-    user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-}
-
-/* Custom scrollbar for webkit browsers */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: #333;
-}
-
-::-webkit-scrollbar-thumb {
-    background: #666;
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #888;
+    border-radius: 8px;
 }
 
 /* Outliner specific styles */
@@ -93,13 +62,13 @@ input:focus {
     position: relative;
 }
 
-.outliner-item:focus-within {
+.outliner-item:focus-within > div {
     background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
 }
 
 /* Enhanced textarea handling */
 .outliner-item textarea {
-    background: transparent;
     resize: none;
     overflow: hidden;
     transition: background-color 0.2s ease-in-out;
@@ -107,7 +76,7 @@ input:focus {
 
 .outliner-item textarea:focus {
     outline: none;
-    background-color: transparent;
+    background-color: transparent !important;
 }
 
 /* Selection layer styling */
@@ -141,15 +110,16 @@ input:focus {
     scrollbar-color: #666 #333;
 }
 
-/* Ensure proper rendering of monospace content */
-.font-mono {
-    font-family: 'Menlo', 'Monaco', 'Courier New', monospace !important;
-}
-
 /* Animation for focus transitions */
 @keyframes fadeIn {
-    from { background-color: transparent; }
-    to { background-color: rgba(255, 255, 255, 0.05); }
+    from { 
+        background-color: transparent;
+        border-radius: 8px;
+    }
+    to { 
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+    }
 }
 
 /* Input container styling */
@@ -159,7 +129,7 @@ input:focus {
     align-items: center;
     padding: 2px 4px;
     margin: 1px 0;
-    border-radius: 2px;
+    border-radius: 8px;
     transition: background-color 0.2s ease-in-out;
 }
 
@@ -178,29 +148,7 @@ input:focus {
     transition: color 0.2s ease-in-out;
 }
 
-/* Root element styling */
-#root {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
-
 /* Ensure proper text editing experience */
 .outliner-item:not(:focus-within) textarea {
     pointer-events: none;
-}
-
-/* Mobile optimizations */
-@media (max-width: 768px) {
-    .outliner-item {
-        padding: 4px 0;
-    }
-
-    ::selection {
-        background: rgba(255, 255, 255, 0.3);
-    }
-
-    .outliner-item textarea {
-        font-size: 16px;
-    }
 }

@@ -153,7 +153,8 @@ const OutlinerItem = ({
   return (
     <div className="outliner-item group relative select-text" style={{ minHeight: '32px' }}>
       <div 
-        className="flex min-w-0 w-full items-stretch absolute inset-0 hover:bg-white/[0.02] transition-colors"
+        className="flex min-w-0 w-full items-stretch absolute inset-0 hover:bg-white/[0.02] 
+                   transition-colors rounded-lg mx-1"
         style={{ 
           paddingLeft: `${level * 24}px`,
           paddingTop: '4px',
@@ -161,7 +162,8 @@ const OutlinerItem = ({
         }}
       >
         <div 
-          className={`flex-shrink-0 w-8 flex items-center justify-center select-none transition-colors ${
+          className={`flex-shrink-0 w-8 flex items-center justify-center select-none 
+                     transition-colors ${
             hasChildItems ? 'cursor-pointer text-gray-500 hover:text-gray-400' : 'text-gray-600'
           }`}
           onClick={handleBulletClick}
@@ -191,8 +193,8 @@ const OutlinerItem = ({
             onBlur={() => setIsEditing(false)}
             className="w-full bg-transparent border-none outline-none 
                      text-white font-mono text-base resize-none pt-0.5 px-2 
-                     select-text overflow-hidden focus:bg-white/[0.05]
-                     transition-colors duration-200"
+                     select-text overflow-hidden focus:bg-transparent
+                     transition-colors duration-200 rounded-lg"
             spellCheck={false}
             style={{
               lineHeight: '24px',
@@ -201,7 +203,8 @@ const OutlinerItem = ({
           />
           
           {showZoomControls && (hasChildItems || isZoomed) && (
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-2 
+                          opacity-0 group-hover:opacity-100 transition-opacity">
               {hasChildItems && !isZoomed && (
                 <button
                   onClick={handleZoomInClick}
