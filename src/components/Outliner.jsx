@@ -57,7 +57,6 @@ const OutlinerItem = ({
   }, [isEditing]);
 
   const handleKeyDown = (e) => {
-    // Handle zoom keyboard shortcuts
     if (e.key === '.' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       onZoomIn(item.id);
@@ -154,7 +153,7 @@ const OutlinerItem = ({
   return (
     <div className="outliner-item group relative select-text" style={{ minHeight: '32px' }}>
       <div 
-        className="flex min-w-0 w-full items-stretch absolute inset-0"
+        className="flex min-w-0 w-full items-stretch absolute inset-0 hover:bg-white/[0.02] transition-colors"
         style={{ 
           paddingLeft: `${level * 24}px`,
           paddingTop: '4px',
@@ -191,7 +190,9 @@ const OutlinerItem = ({
             onFocus={() => setIsEditing(true)}
             onBlur={() => setIsEditing(false)}
             className="w-full bg-transparent border-none outline-none 
-                     text-white font-mono text-base resize-none pt-0.5 px-2 select-text overflow-hidden"
+                     text-white font-mono text-base resize-none pt-0.5 px-2 
+                     select-text overflow-hidden focus:bg-white/[0.05]
+                     transition-colors duration-200"
             spellCheck={false}
             style={{
               lineHeight: '24px',
@@ -218,31 +219,19 @@ const OutlinerItem = ({
   );
 };
 
-const Outliner = forwardRef((props, ref) => {
-  const [items, setItems] = useState([{ id: generateId(), content: '', level: 0 }]);
+const Outliner = forwardRef(({
+  items = [],
+  setItems,
+  zoomPath = [],
+  setZoomPath = () => {},
+}, ref) => {
   const [collapsedNodes, setCollapsedNodes] = useState([]);
-  const [zoomPath, setZoomPath] = useState([]); // Add missing state
   const itemRefs = useRef([]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const content = params.get('content');
     const collapsed = params.get('collapsed');
-    const zoom = params.get('zoomPath'); // Add zoom path loading
     
-    if (content) {
-      try {
-        const parsedContent = JSON.parse(content);
-        const contentWithIds = parsedContent.map(item => ({
-          ...item,
-          id: item.id || generateId()
-        }));
-        setItems(contentWithIds);
-      } catch (e) {
-        console.error('Failed to parse content from URL');
-      }
-    }
-
     if (collapsed) {
       try {
         const parsedCollapsed = JSON.parse(collapsed);
@@ -251,39 +240,17 @@ const Outliner = forwardRef((props, ref) => {
         console.error('Failed to parse collapsed nodes from URL');
       }
     }
-
-    if (zoom) {
-      try {
-        const parsedZoom = zoom.split(',');
-        setZoomPath(parsedZoom);
-      } catch (e) {
-        console.error('Failed to parse zoom path from URL');
-      }
-    }
   }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (items.length === 1 && !items[0].content) {
-      params.delete('content');
-    } else {
-      params.set('content', JSON.stringify(items));
-    }
-    
     if (collapsedNodes.length > 0) {
       params.set('collapsed', JSON.stringify(collapsedNodes));
     } else {
       params.delete('collapsed');
     }
-
-    if (zoomPath.length > 0) {
-      params.set('zoomPath', zoomPath.join(','));
-    } else {
-      params.delete('zoomPath');
-    }
-    
     window.history.replaceState(null, '', `?${params.toString()}`);
-  }, [items, collapsedNodes, zoomPath]);
+  }, [collapsedNodes]);
 
   const getVisibleItems = () => {
     if (zoomPath.length === 0) {
@@ -301,7 +268,6 @@ const Outliner = forwardRef((props, ref) => {
       return visibleItems;
     }
 
-    // Handle zoomed state
     const currentZoomId = zoomPath[zoomPath.length - 1];
     const zoomedItemIndex = items.findIndex(item => item.id === currentZoomId);
     
@@ -314,7 +280,6 @@ const Outliner = forwardRef((props, ref) => {
     const zoomedItem = items[zoomedItemIndex];
     visibleItems.push(zoomedItem);
 
-    // Add children of zoomed item
     for (let i = zoomedItemIndex + 1; i < items.length; i++) {
       const item = items[i];
       if (item.level <= zoomedItem.level) break;
@@ -339,16 +304,16 @@ const Outliner = forwardRef((props, ref) => {
     setZoomPath(prev => prev.slice(0, -1));
   };
 
-  const updateItem = (index, newItem) => {
+  const updateItem = (index, changes) => {
     setItems(prevItems => {
       const newItems = [...prevItems];
-      if (index === prevItems.length) {
-        newItems.push({ ...newItem, id: newItem.id || generateId() });
-      } else {
-        newItems[index] = { ...newItem, id: newItem.id || prevItems[index].id };
-      }
+      newItems[index] = { ...newItems[index], ...changes };
       return newItems;
     });
+  };
+
+  const deleteItem = (index) => {
+    setItems(prevItems => prevItems.filter((_, i) => i !== index));
   };
 
   const splitLine = (index, newItem) => {
@@ -358,17 +323,12 @@ const Outliner = forwardRef((props, ref) => {
       return newItems;
     });
 
-    // Focus new line after React state update
     requestAnimationFrame(() => {
       if (itemRefs.current[index]) {
         itemRefs.current[index].focus();
         itemRefs.current[index].setSelectionRange(0, 0);
       }
     });
-  };
-
-  const deleteItem = (index) => {
-    setItems(prevItems => prevItems.filter((_, i) => i !== index));
   };
 
   const indentItem = (index) => {
@@ -440,8 +400,18 @@ const Outliner = forwardRef((props, ref) => {
 
   return (
     <div className="mt-4 max-w-full">
+      {zoomPath.length > 0 && (
+        <button
+          onClick={handleZoomOut}
+          className="mb-4 px-3 py-1.5 text-sm text-gray-400 hover:text-gray-300 
+                   transition-colors flex items-center gap-2 rounded hover:bg-white/[0.05]"
+        >
+          <ZoomOut className="w-4 h-4" />
+          <span>Zoom Out</span>
+        </button>
+      )}
       {visibleItems.map((item, visibleIndex) => {
-        const originalIndex = items.findIndex(originalItem => originalItem === item);
+        const originalIndex = items.findIndex(originalItem => originalItem.id === item.id);
         
         return (
           <OutlinerItem
